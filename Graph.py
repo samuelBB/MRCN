@@ -91,7 +91,6 @@ class Graph:
         permutes current vertex ordering
         """
         from random import shuffle
-
         shuffle(self.D)
 
     def reset(self):

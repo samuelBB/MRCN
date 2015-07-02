@@ -249,8 +249,7 @@ def DFS(G):
     this version of DFS assumes connectedness; the general case is an easy
     modification (see CLRS)
     """
-    black, gray = [], []
-    prev = {}
+    black, gray, prev = [], [], {}
 
     def _dfs(v):
         gray.append(v)

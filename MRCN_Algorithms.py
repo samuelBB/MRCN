@@ -7,16 +7,16 @@ MRCN is the optimization problem that seeks to maximize the number of edge
 crossings in rectilinear plane embeddings of graphs, which we simply call
 drawings. In symbols, let G = (V,E) and let D(G) be the set of all possible
 drawings for G. Let CR(D) for D ∈ D(G) be the maximum number of edge crossings
-for D. We wish to compute the MRCN M_G, defined as
+for D. We wish to compute the MRCN M(G), defined as
 
-                         M_G = max_{D ∈ D(G)} CR(D)
+                         M(G) = max_{D ∈ D(G)} CR(D)
 
 Another important quantity is defined as follows: let D˚(G) be the set of all
 possible convex drawings for G. Let CR˚(D) for D ∈ D˚(G) be the maximum number
 of edge crossings for D. We are also interested in computing the convex-MRCN,
 defined as
 
-                        M˚_G = max_{D ∈ D˚(G)} CR˚(D)
+                        M˚(G) = max_{D ∈ D˚(G)} CR˚(D)
 
 This latter quantity is more readily computed and much easier to represent in
 code.
@@ -92,7 +92,7 @@ def CR(G=None, D=None, EP=None):
 
 def maxCR(G):
     """
-    computes M˚_G for graph G
+    computes M˚(G) for graph G
 
     let n = |V|. non-asymptotic speedups used (both follow by symmetry):
         1. keep the first vertex fixed, and stop permuting when the second
@@ -104,7 +104,9 @@ def maxCR(G):
         1. the while-loop executes (n-2)*(n-2)! times
         2. the if-statement executes (n-1)!/2 times
     """
-    max_cr, maxDrawing, moreDrawingsToCheck, EP = 0, list(), True, NAEPs(G)
+    max_cr, maxDrawing = 0, []
+    moreDrawingsToCheck = True
+    EP = NAEPs(G)
     while moreDrawingsToCheck and not G.D[1] == G.V[G.size - 1]:
         if G.D[1] < G.D[G.size - 1]:
             currentMax = CR(G=G, EP=EP)
@@ -147,7 +149,9 @@ def randomized(G):
     this yields OPT/3 in expectation (and can be derandomized)
     """
     G.permute()
-    return CR(G=G, EP=NAEPs(G)), G.D
+    D = G.D[:]
+    G.reset()
+    return CR(D=D, EP=NAEPs(G)), D
 
 
 def randomizedStepped(G):
@@ -155,11 +159,11 @@ def randomizedStepped(G):
     returns CR˚(D) for a random permutation D ∈ D˚(G) constructed by randomly
     selecting vertices from V(G) one-by-one
     """
-    V = G.V[:]
-    D = list()
-    while V:
-        D += [V.pop(randint(0, len(V) - 1))]
-    return CR(D=D, EP=NAEPs(G))
+    D = []
+    while G.D:
+        D += [G.D.pop(randint(0, len(G.D) - 1))]
+    G.reset()
+    return CR(D=D, EP=NAEPs(G)), D
 
 
 def greedy(G, custom=None, order=False, direction=False, mix=False, io=print):
@@ -177,9 +181,9 @@ def greedy(G, custom=None, order=False, direction=False, mix=False, io=print):
 
     # sequential ordering may already be random (e.g., for random graphs)
     if mix:
-        shuffle(G.V)
+        shuffle(G.D)
 
-    for v in ordered(G, direction) if order else (custom if custom else G.V):
+    for v in ordered(G, direction) if order else (custom if custom else G.D):
         max_for_vertex = max_pos = 0
         E += neighborhoodInducedSubgraph(G, D, v)
 
@@ -193,8 +197,9 @@ def greedy(G, custom=None, order=False, direction=False, mix=False, io=print):
 
         D.insert(max_pos + 1, v)
         # print result of each greedy round
-        io('\n%d -- %s | cr: %d' % (v, D, max_for_vertex))
+        # io('\n%d -- %s | cr: %d' % (v, D, max_for_vertex))
 
+    G.reset()
     return CR(D=D, EP=NAEPs(E=E)), D
 
 
@@ -210,7 +215,7 @@ def localSearch(G, mix=False):
 
     # sequential ordering may already be random
     if mix:
-        shuffle(G.V)
+        shuffle(G.D)
 
     EP = NAEPs(G)
     curr_cr, curr_d = CR(D=G.D, EP=EP), G.D[:]
@@ -222,6 +227,7 @@ def localSearch(G, mix=False):
             if curr_cr < tentative_cr:
                 curr_cr, curr_d = tentative_cr, tentative_D[:]
 
+    G.reset()
     return CR(D=curr_d, EP=EP), curr_d
 
 
@@ -251,10 +257,9 @@ def randomizedTest(G, N, io=print, file=None):
     io('randomized:\nGraph:\n%s' % G)
     max_cr, max_d = randomized(G)
     for i in range(N):
-        # this shouldn't matter since each round is randomized
-        # G.reset()
         curr, curr_d = randomized(G)
         if curr > max_cr:
-            max_cr, max_d = curr, curr_d
+            max_cr, max_d = curr, curr_d[:]
     plot(G, max_d, randomized.__name__, path=file)
     io('\nResults:\n%s %s' % (max_cr, max_d))
+    return max_cr, max_d
