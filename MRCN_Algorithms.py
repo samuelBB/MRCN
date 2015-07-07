@@ -269,7 +269,7 @@ def localSearch(G, mix=False, cap=float('inf')):
         cap -= 1
         for v in G.V:
             for currentSpot in range(len(D)):
-                currentDrawing = D[:currentSpot + 1] + [v] + D[currentSpot + 1:]
+                currentDrawing = D[:currentSpot+1] + [v] + D[currentSpot+1:]
                 currentCR = maxCR(D=currentDrawing, EP=EP)
                 if maxCR < currentCR:
                     maxCR, D = currentCR, currentDrawing[:]
