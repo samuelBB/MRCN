@@ -41,7 +41,7 @@ from Graph import Graph
 ######################
 
 
-def ER(n, p=1/2):
+def erdos_renyi(n, p=1/2):
     """
     constructs erdos-renyi random graph on n vertices with probability p
     (default p=1/2)
@@ -54,15 +54,24 @@ def ER(n, p=1/2):
     return G
 
 
-def randConnected(n, p=1/2):
+def randomTree(n):
     """
-    constructs a random connected graph by first forming a tree on n vertices
-    and then adding subsequent edges with probability p (default p=1/2)
+    constructs a random tree by sequentially adding new edges to a random
+    vertex already part of the tree
     """
     G = Graph(V=[0], E=[])
     for i in range(1, n):
         G.add_edge((choice(G.V), i))
         G.add_vertex(i)
+    return G
+
+
+def randomConnected(n, p=1/2):
+    """
+    constructs a random connected graph by first forming a tree on n vertices
+    and then adding subsequent edges with probability p (default p=1/2)
+    """
+    G = randomTree(n)
     for i in G.V:
         for j in G.V:
             if i < j and (i, j) not in G and random() < p:
@@ -75,9 +84,8 @@ def C(n):
     cycle graph on n vertices
 
     note:
-    MRCN(C(n)) = (n(n - 3))/2 if n odd else n(n - 4)/2 + 1
+    M(C(n)) = (n(n - 3))/2 if n odd else n(n - 4)/2 + 1
     """
-
     E = [(k, (k + 1) % n) for k in range(n)]
     return Graph(E=E, V=range(n))
 
@@ -87,7 +95,7 @@ def K(n):
     complete graph on n vertices
 
     note:
-    MRCN(K(n)) = nC4
+    M(K(n)) = nC4
     """
     E, vs = [], range(1, n)
     for n in range(n - 1):
@@ -97,7 +105,7 @@ def K(n):
     return Graph(E=E, V=range(n))
 
 
-def uniformGenStar(b, e):
+def uniformGeneralizedStar(b, e):
     """
     uniform generalized star graph on b branches of length e
     (in number of edges)
@@ -121,34 +129,34 @@ def classRange(T, a, b):
     return [T(i) for i in range(a, b + 1)]
 
 
-def fromSimpleFile(file):
-        """
-        constructs graph from adjacency-list in text file; the accepted format
-        is very simple: line i of the file contains the neighbors of node i,
-        separated by spaces. e.g.,
-
-        1 2 3
-        0 2
-        0 1
-        0
-
-        is the graph V = {0,1,2,3}, E = {{0,1},{0,2},{0,3},{1,2}}
-        """
-        adj_list = open(file).read().splitlines()
-        E, size = [], 0
-        for v, adj in enumerate(adj_list):
-            neighbors = map(int, adj.split(" "))
-            for n in neighbors:
-                E += [(v, n)]
-            size = max(size, max(neighbors))
-
-        return Graph(V=range(size + 1), E=E)
-
-
-def fromFileReg(file):
+def fromFile(file):
     """
     constructs graph from adjacency-list in text file; the accepted format
-    is that used at the following website:
+    is very simple: line i of the file contains the neighbors of node i,
+    separated by spaces. e.g.,
+
+    1 2 3
+    0 2
+    0 1
+    0
+
+    is the graph specified by V = {0,1,2,3}, E = {{0,1},{0,2},{0,3},{1,2}}
+    """
+    adjacencyList = open(file).read().splitlines()
+    E, size = [], 0
+    for v, neighborhood in enumerate(adjacencyList):
+        neighbors = map(int, neighborhood.split(" "))
+        for n in neighbors:
+            E += [(v, n)]
+        size = max(size, max(neighbors))
+
+    return Graph(V=range(size + 1), E=E)
+
+
+def fromFile_RegFormat(file):
+    """
+    constructs graph from adjacency-list in text file; the accepted format
+    is the one used at the following website:
 
     http://www.mathe2.uni-bayreuth.de/markus/reggraphs.html#CRG
 
@@ -182,7 +190,7 @@ def fromFileReg(file):
                     E += [(j, int(c) - 1)]
                 M = max(M, int(c))
             j += 1
-    graphList += [Graph(E=E, V=range(M))]  # get last graph
+    graphList += [Graph(E=E, V=range(M))]    # get last graph
     return graphList
 
 
@@ -191,7 +199,7 @@ def fromFileReg(file):
 #############################################
 
 
-def adjacent(e, f):
+def adj(e, f):
     """
     checks if edges e, f are adjacent
     """
@@ -218,21 +226,19 @@ def ordered(G, b=False):
 
     b: specifies ascending or descending, where default is ascending (False)
     """
-    return [s[0] for s in sorted(
-        map(lambda v: (v, deg(v, G)), G.V),
-        key=lambda p: p[1],
-        reverse=b
-    )]
+    return [s[0] for s in sorted(map(lambda v: (v, deg(v, G)), G.V),
+                                 key=lambda p: p[1],
+                                 reverse=b)]
 
 
-def inducedSubgraph(G, U):
+def induced(G, U):
     """
     return the subgraph induced by U ⊆ V(G), i.e., {(u,v) | u,v ∈ U}
     """
     return [e for e in G.E if set(e) <= set(U)]
 
 
-def neighborhoodInducedSubgraph(G, U, v):
+def neighborhoodInduced(G, U, v):
     """
     return the edges induced by the neighborhood of v in U ⊆ V(G), i.e.,
     {(u,v) | u ∈ U}
@@ -241,25 +247,28 @@ def neighborhoodInducedSubgraph(G, U, v):
                                                             and e[1] in U)]
 
 
-def DFS(G):
+def dfs(G):
     """return a DFS-induced ordering of V as well as the induced predecessor
     list as a dictionary
 
     note:
-    this version of DFS assumes connectedness; the general case is an easy
-    modification (see CLRS)
+    the ordering of the gray list corresponds to discovery time, and that of
+    the black list to finishing time (see CLRS 3rd Ed. pgs. 603-612)
     """
     black, gray, prev = [], [], {}
 
     def _dfs(v):
-        gray.append(v)
-        for u in N(v, G):
-            if u not in gray and u not in black:
-                prev[u] = v
-                _dfs(u)
-        black.append(v)
+        gray.append(v)    # discovery time
+        for w in N(v, G):
+            if w not in gray and w not in black:
+                prev[w] = v
+                _dfs(w)
+        black.append(v)    # finishing time
 
-    _dfs(G.V[0])
+    for u in G.V:    # necessary only for disconnected graphs
+        if u not in gray and u not in black:
+            _dfs(u)
+
     return black, prev
 
 
@@ -268,12 +277,15 @@ def DFS(G):
 ############
 
 
-def plot(Gr, P, name, path=None):
+# TODO - random plotting and tree plotting
+
+
+def circle_plot(Gr, P, name, path=None):
     """plot Gr about the unit circle, with the vertices being placed according
     to the order of permutation P; fill in edges
 
     name: MRCN algorithm used
-    file: desired path to save file
+    path: desired path to save file
     """
     from os.path import dirname
     from math import cos, sin, pi
@@ -284,14 +296,18 @@ def plot(Gr, P, name, path=None):
     G.add_nodes_from(Gr.V)
     G.add_edges_from(Gr.E)
 
-    pos, alpha = {}, (2 * pi) / len(Gr.V)
+    radius = 1
+
+    pos = {}
+    alpha = (2 * pi) / len(Gr.V)
     for j, v in enumerate(reversed(P)):
-        pos[v] = (-sin((j + 1) * alpha), cos((j + 1) * alpha))
+        # plot vertices clockwise, as equidistant points on circle
+        pos[v] = (-radius*sin((j + 1) * alpha), radius*cos((j + 1) * alpha))
 
     nx.draw(G, pos, node_size=800)
     nx.draw_networkx_labels(G, pos, font_size=16)
 
-    circle = plt.Circle((0, 0), 1, color='b', fill=False)
+    circle = plt.Circle((0, 0), radius, color='b', fill=False)
     plt.gcf().gca().add_artist(circle)
 
     plt.axis('off')

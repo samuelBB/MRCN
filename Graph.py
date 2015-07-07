@@ -30,7 +30,8 @@ class Graph:
         """
         accepts pair of lists (V,E) to construct a graph
         """
-        self.V, self.E = sorted(V), self._normalize(E) if normalize else E
+        self.V, self.E = sorted(V), (E if E else [])
+        self._normalize(self.E) if normalize else E
         self.D = self.V[:]
         self.size = len(self.V)
 
@@ -39,18 +40,18 @@ class Graph:
         maintains the current or argument edge-set E in sorted order by
         first and second element of an edge
         """
-        if not E:  # normalize current edge-set
+        if not E:    # normalize current edge-set
             for i, e in enumerate(self.E):
                 self.E[i] = tuple(sorted(e))
             self.E = sorted(self.E, key=lambda x: (x[0], x[1]))
-        else:  # normalize edge-set argument E
+        else:    # normalize edge-set argument E
             for i, e in enumerate(E):
                 E[i] = tuple(sorted(e))
             return sorted(E, key=lambda x: (x[0], x[1]))
 
-    # TODO:
+    # TODO
     # when adding a new edge or vertex, perform binary search to place it
-    # correctly rather than sorting V or E each time
+    # correctly in proper order rather than sorting V or E each time
 
     def add_edge(self, e, normalize=True):
         """
@@ -126,9 +127,9 @@ class Graph:
         """
         membership for vertices and edges
         """
-        if type(obj) == int:  # vertex
+        if type(obj) == int:    # vertex
             return True if obj in self.V else False
-        else:  # edge
+        else:    # edge
             return True if obj in self.E or obj[::-1] in self.E else False
 
     def __str__(self):

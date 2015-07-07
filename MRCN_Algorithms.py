@@ -40,8 +40,8 @@ sets of xy-coordinates as demanded by the general setting.
 
 
 from random import shuffle, randint
-from GraphTheoreticTools import adjacent, ordered, plot, \
-    neighborhoodInducedSubgraph
+from GraphTheoreticTools import adj, ordered, circle_plot, \
+    neighborhoodInduced
 
 
 ###################################
@@ -55,12 +55,12 @@ def NAEPs(G=None, E=None):
     """
     if G:
         E = G.E
-    pairs = []
+    naeps = []
     for i in range(len(E)):
         for j in range(i + 1, len(E)):
-            if not adjacent(E[i], E[j]):
-                pairs += [(E[i], E[j])]
-    return pairs
+            if not adj(E[i], E[j]):
+                naeps += [(E[i], E[j])]
+    return naeps
 
 
 def crosses(D, ep):
@@ -90,7 +90,7 @@ def CR(G=None, D=None, EP=None):
     return cr
 
 
-def maxCR(G):
+def maxConvexCR(G):
     """
     computes M˚(G) for graph G
 
@@ -116,24 +116,61 @@ def maxCR(G):
     return max_cr, maxDrawing
 
 
+# TODO - support ties as a list of optimums; make cleaner, if possible
 def MMCR(Gs):
     """finds the graph(s) with minimum and maximum convex-MRCN over a set of
     graphs Gs
-
-    TODO:
-    -support ties as a list of optimums
-    -make neater, if possible
     """
     maxIndex = minIndex = 0
-    max_cr, maxDrawing = maxCR(Gs[0])
+    max_cr, maxDrawing = maxConvexCR(Gs[0])
     min_cr, minDrawing = max_cr, maxDrawing[:]
     for i, G in enumerate(Gs[1:]):
-        currentCR, currentDrawing = maxCR(G)
+        currentCR, currentDrawing = maxConvexCR(G)
         if max_cr < currentCR:
             maxIndex, max_cr, maxDrawing = i, currentCR, currentDrawing[:]
         if min_cr > currentCR:
             minIndex, min_cr, minDrawing = i, currentCR, currentDrawing[:]
     return maxIndex, max_cr, maxDrawing, minIndex, min_cr, minDrawing
+
+
+###########
+# testing #
+###########
+
+
+def test(algorithm):
+    """
+    decorator which adds IO functionality to MRCN algorithms; in addition to
+    runnning algorithm, results are printed with specified IO function, and the
+    resultant drawing is plotted and saved to a .png picture file
+    """
+    def _test(*args, io=print, path=None, **kwargs):
+        """
+        the decorated function to be returned
+        """
+        io('\n~%s~\nGraph:\n%s' % (algorithm.__name__, args[0]))
+        cr, d = algorithm(*args, **kwargs)
+        circle_plot(args[0], d, algorithm.__name__, path=path)
+        io('\nResults:\n%s %s\n' % (cr, d))
+        return cr, d
+    return _test
+
+
+def randomizedTest(G, N, io=print, path=None):
+    """
+    runs randomized MRCN algorithm N times, returning the result of the
+    maximal round; prints results, and saves resultant drawing to a .png
+    picture file at desired path
+    """
+    io('randomized:\nGraph:\n%s' % G)
+    max_cr, max_d = randomized(G)
+    for i in range(N):
+        curr, curr_d = randomized(G)
+        if curr > max_cr:
+            max_cr, max_d = curr, curr_d[:]
+    circle_plot(G, max_d, randomized.__name__, path=path)
+    io('\nResults:\n%s %s' % (max_cr, max_d))
+    return max_cr, max_d
 
 
 ############################
@@ -166,16 +203,18 @@ def randomizedStepped(G):
     return CR(D=D, EP=NAEPs(G)), D
 
 
-def greedy(G, custom=None, order=False, direction=False, mix=False, io=print):
+@test
+def greedy(G, custom=None, order=False, direction=False, mix=False, IO=None):
     """
     sequentially places the vertices about the unit circle, maximizing the
     number of edge crossings for each placement
 
+    G:         the graph to run greedy on
     custom:    specify a custom ordering
     order:     order vertices by degree if true
     direction: order by ascending degree if False (default) else descending
-    mix:       specify if ordering should be shuffled
-    io:        specify IO function
+    mix:       specify if vertex-ordering should be shuffled
+    IO:        specify IO function for partial results, if desired
     """
     D, E = [], []
 
@@ -183,34 +222,39 @@ def greedy(G, custom=None, order=False, direction=False, mix=False, io=print):
     if mix:
         shuffle(G.D)
 
+    maxCR = 0
     for v in ordered(G, direction) if order else (custom if custom else G.D):
-        max_for_vertex = max_pos = 0
-        E += neighborhoodInducedSubgraph(G, D, v)
+        maxSpot = 0    # affects placement, e.g., if no crossings found
+        E += neighborhoodInduced(G, D, v)
+        for currentSpot in range(len(D)):
+            currentDrawing = D[:currentSpot + 1] + [v] + D[currentSpot + 1:]
+            currentCR = CR(D=currentDrawing, EP=NAEPs(E=E))
+            # '<' / '<=' returns first / last position giving max
+            if maxCR < currentCR:
+                maxCR, maxSpot = currentCR, currentSpot
+        D.insert(maxSpot + 1, v)
 
-        for tentative_pos in range(len(D)):
-            tentative_D = D[:tentative_pos + 1] + [v] + D[tentative_pos + 1:]
-            tentative_cr = CR(D=tentative_D, EP=NAEPs(E=E))
-            # '<' returns first position giving max
-            # '<=' returns last position giving max
-            if max_for_vertex < tentative_cr:
-                max_for_vertex, max_pos = tentative_cr, tentative_pos
-
-        D.insert(max_pos + 1, v)
         # print result of each greedy round
-        # io('\n%d -- %s | cr: %d' % (v, D, max_for_vertex))
+        if IO:
+            IO('\n%d -- %s | cr: %d' % (v, D, maxCR))
 
     G.reset()
-    return CR(D=D, EP=NAEPs(E=E)), D
+    return maxCR, D
 
 
-def localSearch(G, mix=False):
+# TODO (if useful)
+# investigate the approximation gain and time increase with cap
+# vertex-ordering heuristics (e.g., degree)
+# printing partial results
+@test
+def localSearch(G, mix=False, cap=float('inf')):
     """
     starting with a random convex drawing, moves vertices while there are still
     moves that strictly increase the number of edge crossings
 
-    TODO:
-    -vertex-ordering heuristics (e.g., degree), if useful
-    -printing partial results, if useful
+    G:   the graph to run local-search on
+    mix: specify if vertex-ordering should be shuffled
+    cap: number of times to loop through the vertices
     """
 
     # sequential ordering may already be random
@@ -218,48 +262,17 @@ def localSearch(G, mix=False):
         shuffle(G.D)
 
     EP = NAEPs(G)
-    curr_cr, curr_d = CR(D=G.D, EP=EP), G.D[:]
-    for v in G.V:
-        for tentative_pos in range(len(curr_d)):
-            tentative_D = \
-                curr_d[:tentative_pos + 1] + [v] + curr_d[tentative_pos + 1:]
-            tentative_cr = CR(D=tentative_D, EP=EP)
-            if curr_cr < tentative_cr:
-                curr_cr, curr_d = tentative_cr, tentative_D[:]
+    maxCR, D = CR(D=G.D, EP=EP), G.D[:]
+    previousCR = -1
+    while previousCR != maxCR and cap > 0:
+        previousCR = maxCR
+        cap -= 1
+        for v in G.V:
+            for currentSpot in range(len(D)):
+                currentDrawing = D[:currentSpot + 1] + [v] + D[currentSpot + 1:]
+                currentCR = maxCR(D=currentDrawing, EP=EP)
+                if maxCR < currentCR:
+                    maxCR, D = currentCR, currentDrawing[:]
 
     G.reset()
-    return CR(D=curr_d, EP=EP), curr_d
-
-
-###########
-# testing #
-###########
-
-
-def test(G, algorithm, *args, io=print, file=None):
-    """
-    runs supplied MRCN algorithm, prints results, and saves resultant drawing
-    to a .png picture file
-    """
-    io('\n\n%s:\nGraph:\n%s' % (algorithm.__name__, G))
-    cr, d = algorithm(G, *args, io=io) if args else algorithm(G, io=io)
-    plot(G, d, algorithm.__name__, path=file)
-    io('\nResults:\n%s %s' % (cr, d))
-    return cr, d
-
-
-def randomizedTest(G, N, io=print, file=None):
-    """
-    runs randomized MRCN algorithm N times, returning the result of the
-    maximal round; prints results, and saves resultant drawing to a .png
-    picture file
-    """
-    io('randomized:\nGraph:\n%s' % G)
-    max_cr, max_d = randomized(G)
-    for i in range(N):
-        curr, curr_d = randomized(G)
-        if curr > max_cr:
-            max_cr, max_d = curr, curr_d[:]
-    plot(G, max_d, randomized.__name__, path=file)
-    io('\nResults:\n%s %s' % (max_cr, max_d))
-    return max_cr, max_d
+    return maxCR, D
