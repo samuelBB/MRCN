@@ -33,7 +33,6 @@ class Graph:
         self.V, self.E = sorted(V), (E if E else [])
         self._normalize(self.E) if normalize else E
         self.D = self.V[:]
-        self.size = len(self.V)
 
     def _normalize(self, E=None):
         """
@@ -48,6 +47,12 @@ class Graph:
             for i, e in enumerate(E):
                 E[i] = tuple(sorted(e))
             return sorted(E, key=lambda x: (x[0], x[1]))
+
+    def size(self):
+        """
+        computes size of G, i.e., number of vertices
+        """
+        return len(self.V)
 
     # TODO
     # when adding a new edge or vertex, perform binary search to place it
