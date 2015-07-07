@@ -107,8 +107,8 @@ def maxConvexCR(G):
     max_cr, maxDrawing = 0, []
     moreDrawingsToCheck = True
     EP = NAEPs(G)
-    while moreDrawingsToCheck and not G.D[1] == G.V[G.size - 1]:
-        if G.D[1] < G.D[G.size - 1]:
+    while moreDrawingsToCheck and not G.D[1] == G.V[G.size() - 1]:
+        if G.D[1] < G.D[G.size() - 1]:
             currentMax = CR(G=G, EP=EP)
             if max_cr < currentMax:
                 max_cr, maxDrawing = currentMax, G.D[:]
