@@ -4,6 +4,7 @@ addition to list structures to store vertices and edges, we augment the Graph
 class with functionality to facilitate usage with MRCN algorithms (see
 MRCN_Algorithms.py)
 """
+from random import shuffle, sample
 
 
 class Graph:
@@ -39,16 +40,16 @@ class Graph:
         maintains the current or argument edge-set E in sorted order by
         first and second element of an edge
         """
-        if not E:    # normalize current edge-set
+        if not E:  # normalize current edge-set
             for i, e in enumerate(self.E):
                 self.E[i] = tuple(sorted(e))
             self.E = sorted(self.E, key=lambda x: (x[0], x[1]))
-        else:    # normalize edge-set argument E
+        else:  # normalize edge-set argument E
             for i, e in enumerate(E):
                 E[i] = tuple(sorted(e))
             return sorted(E, key=lambda x: (x[0], x[1]))
 
-    def size(self):
+    def __len__(self):
         """
         computes size of G, i.e., number of vertices
         """
@@ -92,12 +93,15 @@ class Graph:
         for v in vertices:
             self.add_vertex(v)
 
-    def permute(self):
+    def permute(self, in_place=False):
         """
-        permutes current vertex ordering
+        return random permutation of G.V, unless `in_place=True` in which case permute
+        `self.D` in place
         """
-        from random import shuffle
-        shuffle(self.D)
+        if in_place:
+            shuffle(self.D)
+        else:
+            return sample(self.V, len(self))
 
     def reset(self):
         """

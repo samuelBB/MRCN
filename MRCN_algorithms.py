@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Algorithms for the Maximum Rectilinear Crossing Number (MRCN) problem
 
@@ -37,11 +38,10 @@ drawings. This is a very convenient simplification since we can easily
 represent such drawings as permutations on the vertex-sets, rather than as
 sets of xy-coordinates as demanded by the general setting.
 """
-
-
+from __future__ import print_function
+from os.path import join
 from random import shuffle, randint
-from GraphTheoreticTools import adj, ordered, circle_plot, \
-    neighborhoodInduced
+from graph_tools import adj, ordered, circle_plot, N_induced
 
 
 ###################################
@@ -49,7 +49,7 @@ from GraphTheoreticTools import adj, ordered, circle_plot, \
 ###################################
 
 
-def NAEPs(G=None, E=None):
+def naeps(G=None, E=None):
     """
     constructs list of nonadjacent edge pairs (NAEPs) for graph G or edge-set E
     """
@@ -81,8 +81,10 @@ def CR(G=None, D=None, EP=None):
     """
     for graph G, computes CR˚(D) for drawing D ∈ D˚(G)
     """
-    if G:
+    if G and not D:
         D = G.D
+    if G and not EP:
+        EP = naeps(G)
     cr = 0
     for ep in EP:
         if crosses(D, ep):
@@ -90,7 +92,7 @@ def CR(G=None, D=None, EP=None):
     return cr
 
 
-def maxConvexCR(G):
+def MRCN_convex(G):
     """
     computes M˚(G) for graph G
 
@@ -104,16 +106,17 @@ def maxConvexCR(G):
         1. the while-loop executes (n-2)*(n-2)! times
         2. the if-statement executes (n-1)!/2 times
     """
-    max_cr, maxDrawing = 0, []
-    moreDrawingsToCheck = True
-    EP = NAEPs(G)
-    while moreDrawingsToCheck and not G.D[1] == G.V[G.size() - 1]:
-        if G.D[1] < G.D[G.size() - 1]:
-            currentMax = CR(G=G, EP=EP)
-            if max_cr < currentMax:
-                max_cr, maxDrawing = currentMax, G.D[:]
-        moreDrawingsToCheck = G.next()
-    return max_cr, maxDrawing
+    max_cr, max_drawing = 0, []
+    more_drawings_to_check = True
+    EP = naeps(G)
+    while more_drawings_to_check and not G.D[1] == G.V[len(G) - 1]:
+        if G.D[1] < G.D[len(G) - 1]:
+            current_max = CR(G=G, EP=EP)
+            if max_cr < current_max:
+                max_cr, max_drawing = current_max, G.D[:]
+        more_drawings_to_check = G.next()
+    G.reset()
+    return max_cr, max_drawing
 
 
 # TODO - support ties as a list of optimums; make cleaner, if possible
@@ -121,16 +124,16 @@ def MMCR(Gs):
     """finds the graph(s) with minimum and maximum convex-MRCN over a set of
     graphs Gs
     """
-    maxIndex = minIndex = 0
-    max_cr, maxDrawing = maxConvexCR(Gs[0])
-    min_cr, minDrawing = max_cr, maxDrawing[:]
+    max_index = min_index = 0
+    max_cr, max_drawing = MRCN_convex(Gs[0])
+    min_cr, min_drawing = max_cr, max_drawing[:]
     for i, G in enumerate(Gs[1:]):
-        currentCR, currentDrawing = maxConvexCR(G)
-        if max_cr < currentCR:
-            maxIndex, max_cr, maxDrawing = i, currentCR, currentDrawing[:]
-        if min_cr > currentCR:
-            minIndex, min_cr, minDrawing = i, currentCR, currentDrawing[:]
-    return maxIndex, max_cr, maxDrawing, minIndex, min_cr, minDrawing
+        current_CR, current_drawing = MRCN_convex(G)
+        if max_cr < current_CR:
+            max_index, max_cr, max_drawing = i, current_CR, current_drawing[:]
+        if min_cr > current_CR:
+            min_index, min_cr, min_drawing = i, current_CR, current_drawing[:]
+    return max_index, max_cr, max_drawing, min_index, min_cr, min_drawing
 
 
 ###########
@@ -144,19 +147,21 @@ def test(algorithm):
     runnning algorithm, results are printed with specified IO function, and the
     resultant drawing is plotted and saved to a .png picture file
     """
-    def _test(*args, io=print, path=None, **kwargs):
+    def _test(*args, **kwargs):
         """
         the decorated function to be returned
         """
+        io = kwargs.get('io', print)
+        path = kwargs.get('path', '')
         io('\n~%s~\nGraph:\n%s' % (algorithm.__name__, args[0]))
         cr, d = algorithm(*args, **kwargs)
-        circle_plot(args[0], d, algorithm.__name__, path=path)
+        circle_plot(args[0], d, join(path, algorithm.__name__))
         io('\nResults:\n%s %s\n' % (cr, d))
         return cr, d
     return _test
 
 
-def randomizedTest(G, N, io=print, path=None):
+def randomized_test(G, N, io=print, path=''):
     """
     runs randomized MRCN algorithm N times, returning the result of the
     maximal round; prints results, and saves resultant drawing to a .png
@@ -168,7 +173,7 @@ def randomizedTest(G, N, io=print, path=None):
         curr, curr_d = randomized(G)
         if curr > max_cr:
             max_cr, max_d = curr, curr_d[:]
-    circle_plot(G, max_d, randomized.__name__, path=path)
+    circle_plot(G, max_d, join(path, randomized.__name__))
     io('\nResults:\n%s %s' % (max_cr, max_d))
     return max_cr, max_d
 
@@ -185,13 +190,11 @@ def randomized(G):
     note:
     this yields OPT/3 in expectation (and can be derandomized)
     """
-    G.permute()
-    D = G.D[:]
-    G.reset()
-    return CR(D=D, EP=NAEPs(G)), D
+    D = G.permute()
+    return CR(G, D=D), D
 
 
-def randomizedStepped(G):
+def randomized_stepped(G):
     """
     returns CR˚(D) for a random permutation D ∈ D˚(G) constructed by randomly
     selecting vertices from V(G) one-by-one
@@ -200,7 +203,7 @@ def randomizedStepped(G):
     while G.D:
         D += [G.D.pop(randint(0, len(G.D) - 1))]
     G.reset()
-    return CR(D=D, EP=NAEPs(G)), D
+    return CR(G=G, D=D), D
 
 
 @test
@@ -222,24 +225,24 @@ def greedy(G, custom=None, order=False, direction=False, mix=False, IO=None):
     if mix:
         shuffle(G.D)
 
-    maxCR = 0
+    max_CR = 0
     for v in ordered(G, direction) if order else (custom if custom else G.D):
-        maxSpot = 0    # affects placement, e.g., if no crossings found
-        E += neighborhoodInduced(G, D, v)
-        for currentSpot in range(len(D)):
-            currentDrawing = D[:currentSpot + 1] + [v] + D[currentSpot + 1:]
-            currentCR = CR(D=currentDrawing, EP=NAEPs(E=E))
+        max_spot = 0    # affects placement, e.g., if no crossings found
+        E += N_induced(G, D, v)
+        for current_spot in range(len(D)):
+            current_drawing = D[:current_spot + 1] + [v] + D[current_spot + 1:]
+            current_CR = CR(D=current_drawing, EP=naeps(E=E))
             # '<' / '<=' returns first / last position giving max
-            if maxCR < currentCR:
-                maxCR, maxSpot = currentCR, currentSpot
-        D.insert(maxSpot + 1, v)
+            if max_CR < current_CR:
+                max_CR, max_spot = current_CR, current_spot
+        D.insert(max_spot + 1, v)
 
         # print result of each greedy round
         if IO:
-            IO('\n%d -- %s | cr: %d' % (v, D, maxCR))
+            IO('\n%d -- %s | cr: %d' % (v, D, max_CR))
 
     G.reset()
-    return maxCR, D
+    return max_CR, D
 
 
 # TODO (if useful)
@@ -247,7 +250,7 @@ def greedy(G, custom=None, order=False, direction=False, mix=False, IO=None):
 # vertex-ordering heuristics (e.g., degree)
 # printing partial results
 @test
-def localSearch(G, mix=False, cap=float('inf')):
+def local_search(G, mix=False, cap=float('inf')):
     """
     starting with a random convex drawing, moves vertices while there are still
     moves that strictly increase the number of edge crossings
@@ -259,20 +262,20 @@ def localSearch(G, mix=False, cap=float('inf')):
 
     # sequential ordering may already be random
     if mix:
-        shuffle(G.D)
+        G.permute(in_place=True)
 
-    EP = NAEPs(G)
-    maxCR, D = CR(D=G.D, EP=EP), G.D[:]
-    previousCR = -1
-    while previousCR != maxCR and cap > 0:
-        previousCR = maxCR
+    EP = naeps(G)
+    max_CR, D = CR(G, EP=EP), G.D[:]
+    previous_CR = -1
+    while previous_CR != max_CR and cap > 0:
+        previous_CR = max_CR
         cap -= 1
         for v in G.V:
-            for currentSpot in range(len(D)):
-                currentDrawing = D[:currentSpot+1] + [v] + D[currentSpot+1:]
-                currentCR = maxCR(D=currentDrawing, EP=EP)
-                if maxCR < currentCR:
-                    maxCR, D = currentCR, currentDrawing[:]
+            for current_spot in range(len(D)):
+                current_drawing = D[:current_spot+1] + [v] + D[current_spot+1:]
+                current_CR = max_CR(D=current_drawing, EP=EP)
+                if max_CR < current_CR:
+                    max_CR, D = current_CR, current_drawing[:]
 
     G.reset()
-    return maxCR, D
+    return max_CR, D

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 An assortment of standard graph-theoretic tools to facilitate studying the MRCN
 problem
@@ -30,10 +31,8 @@ This file contains:
    spacing and vertex numbering. the resultant drawing is saved to a .png
    picture file
 """
-
-
 from random import random, choice
-from Graph import Graph
+from graph import Graph
 
 
 ######################
@@ -54,7 +53,7 @@ def erdos_renyi(n, p=1/2):
     return G
 
 
-def randomTree(n):
+def random_tree(n):
     """
     constructs a random tree by sequentially adding new edges to a random
     vertex already part of the tree
@@ -66,12 +65,12 @@ def randomTree(n):
     return G
 
 
-def randomConnected(n, p=1/2):
+def random_connected(n, p=1 / 2):
     """
     constructs a random connected graph by first forming a tree on n vertices
     and then adding subsequent edges with probability p (default p=1/2)
     """
-    G = randomTree(n)
+    G = random_tree(n)
     for i in G.V:
         for j in G.V:
             if i < j and (i, j) not in G and random() < p:
@@ -83,8 +82,7 @@ def C(n):
     """
     cycle graph on n vertices
 
-    note:
-    M(C(n)) = (n(n - 3))/2 if n odd else n(n - 4)/2 + 1
+    note: M(C(n)) = (n(n - 3))/2 if n odd else n(n - 4)/2 + 1
     """
     E = [(k, (k + 1) % n) for k in range(n)]
     return Graph(E=E, V=range(n))
@@ -94,8 +92,7 @@ def K(n):
     """
     complete graph on n vertices
 
-    note:
-    M(K(n)) = nC4
+    note: M(K(n)) = nC4
     """
     E, vs = [], range(1, n)
     for n in range(n - 1):
@@ -105,7 +102,7 @@ def K(n):
     return Graph(E=E, V=range(n))
 
 
-def uniformGeneralizedStar(b, e):
+def uniform_generalized_star(b, e):
     """
     uniform generalized star graph on b branches of length e
     (in number of edges)
@@ -121,7 +118,7 @@ def uniformGeneralizedStar(b, e):
     return Graph(E=E, V=V)
 
 
-def classRange(T, a, b):
+def class_range(T, a, b):
     """
     creates a list of class T graphs (e.g., C or K) in range of sizes a,..,b
     including the endpoints
@@ -129,7 +126,7 @@ def classRange(T, a, b):
     return [T(i) for i in range(a, b + 1)]
 
 
-def fromFile(file):
+def from_file(file):
     """
     constructs graph from adjacency-list in text file; the accepted format
     is very simple: line i of the file contains the neighbors of node i,
@@ -142,9 +139,9 @@ def fromFile(file):
 
     is the graph specified by V = {0,1,2,3}, E = {{0,1},{0,2},{0,3},{1,2}}
     """
-    adjacencyList = open(file).read().splitlines()
+    adjacency_list = open(file).read().splitlines()
     E, size = [], 0
-    for v, neighborhood in enumerate(adjacencyList):
+    for v, neighborhood in enumerate(adjacency_list):
         neighbors = map(int, neighborhood.split(" "))
         for n in neighbors:
             E += [(v, n)]
@@ -153,7 +150,7 @@ def fromFile(file):
     return Graph(V=range(size + 1), E=E)
 
 
-def fromFile_RegFormat(file):
+def from_file_reg_format(file):
     """
     constructs graph from adjacency-list in text file; the accepted format
     is the one used at the following website:
@@ -166,7 +163,7 @@ def fromFile_RegFormat(file):
     import re
 
     lines = open(file).read().splitlines()
-    graphList, E = [], []
+    graph_list, E = [], []
     i = j = M = 0
     b = False
 
@@ -175,7 +172,7 @@ def fromFile_RegFormat(file):
             i += 1
             b = True
             if i > 1:
-                graphList += [Graph(E=E, V=range(M))]
+                graph_list += [Graph(E=E, V=range(M))]
                 j = M = 0
                 E[:] = []
         elif line == "":
@@ -190,8 +187,8 @@ def fromFile_RegFormat(file):
                     E += [(j, int(c) - 1)]
                 M = max(M, int(c))
             j += 1
-    graphList += [Graph(E=E, V=range(M))]    # get last graph
-    return graphList
+    graph_list += [Graph(E=E, V=range(M))]    # get last graph
+    return graph_list
 
 
 #############################################
@@ -238,7 +235,7 @@ def induced(G, U):
     return [e for e in G.E if set(e) <= set(U)]
 
 
-def neighborhoodInduced(G, U, v):
+def N_induced(G, U, v):
     """
     return the edges induced by the neighborhood of v in U ⊆ V(G), i.e.,
     {(u,v) | u ∈ U}
@@ -276,43 +273,44 @@ def dfs(G):
 # plotting #
 ############
 
-
 # TODO - random plotting and tree plotting
 
-
-def circle_plot(Gr, P, name, path=None):
+def circle_plot(G, d=None, save_path=''):
     """plot Gr about the unit circle, with the vertices being placed according
     to the order of permutation P; fill in edges
 
     name: MRCN algorithm used
     path: desired path to save file
     """
-    from os.path import dirname
+    # silence annoying matplotlib warnings
+    import warnings
+    warnings.filterwarnings("ignore")
+
     from math import cos, sin, pi
     import matplotlib.pyplot as plt
     import networkx as nx
 
-    G = nx.Graph()
-    G.add_nodes_from(Gr.V)
-    G.add_edges_from(Gr.E)
+    G_nx = nx.Graph()
+    G_nx.add_nodes_from(G.V)
+    G_nx.add_edges_from(G.E)
 
     radius = 1
-
     pos = {}
-    alpha = (2 * pi) / len(Gr.V)
-    for j, v in enumerate(reversed(P)):
+    alpha = (2 * pi) / len(G.V)
+    for j, v in enumerate(reversed(d or G.V)):
         # plot vertices clockwise, as equidistant points on circle
-        pos[v] = (-radius*sin((j + 1) * alpha), radius*cos((j + 1) * alpha))
+        pos[v] = (-radius * sin((j + 1) * alpha), radius * cos((j + 1) * alpha))
 
-    nx.draw(G, pos, node_size=800)
-    nx.draw_networkx_labels(G, pos, font_size=16)
+    nx.draw(G_nx, pos, node_size=800)
+    nx.draw_networkx_labels(G_nx, pos, font_size=16)
 
     circle = plt.Circle((0, 0), radius, color='b', fill=False)
     plt.gcf().gca().add_artist(circle)
 
     plt.axis('off')
-    plt.axis("equal")
-    plt.savefig((dirname(path) + '/' if path else '') + name + '.png')
-    # paint drawing and display at runtime
-    # plt.show()
+    plt.axis('equal')
+    if save_path:
+        plt.savefig(save_path)
+    else:
+        plt.show()
     plt.close('all')

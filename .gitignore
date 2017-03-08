@@ -1,0 +1,10 @@
+### ignore (feel free to add to this)
+
+# intellij dir
+.idea
+
+# python stuff
+.cache
+.ipynb_checkpoints
+__pycache__
+*.py[cod]
