@@ -2,8 +2,6 @@
 """
 Algorithms for the Maximum Rectilinear Crossing Number (MRCN) problem
 
-=====
-
 MRCN is the optimization problem that seeks to maximize the number of edge
 crossings in rectilinear plane embeddings of graphs, which we simply call
 drawings. In symbols, let G = (V,E) and let D(G) be the set of all possible
@@ -14,13 +12,11 @@ for D. We wish to compute the MRCN M(G), defined as
 
 Another important quantity is defined as follows: let D˚(G) be the set of all
 possible convex drawings for G. Let CR˚(D) for D ∈ D˚(G) be the maximum number
-of edge crossings for D. We are also interested in computing the convex-MRCN,
-defined as
+of edge crossings for D. We are also interested in computing the convex-MRCN:
 
                         M˚(G) = max_{D ∈ D˚(G)} CR˚(D)
 
-This latter quantity is more readily computed and much easier to represent in
-code.
+This latter quantity is more readily computed and represented simply in code.
 
 This file contains:
 
@@ -40,7 +36,7 @@ sets of xy-coordinates as demanded by the general setting.
 """
 from __future__ import print_function
 from os.path import join
-from random import shuffle, randint
+from random import random, shuffle, randint
 from graph_tools import adj, ordered, circle_plot, N_induced
 
 
@@ -59,7 +55,7 @@ def naeps(G=None, E=None):
     for i in range(len(E)):
         for j in range(i + 1, len(E)):
             if not adj(E[i], E[j]):
-                naeps += [(E[i], E[j])]
+                naeps.append((E[i], E[j]))
     return naeps
 
 
@@ -69,7 +65,7 @@ def crosses(D, ep):
     """
 
     # map the vertices of the edge-pair to their location in the drawing D
-    a, b, c, d = list(map(D.index, [ep[0][0], ep[0][1], ep[1][0], ep[1][1]]))
+    a, b, c, d = [D.index(v) for v in ep[0][0], ep[0][1], ep[1][0], ep[1][1]]
 
     # check vertex locations for crossing
     return (a < c < b < d) or (b < c < a < d) or (a < d < b < c) or \
@@ -119,10 +115,10 @@ def MRCN_convex(G):
     return max_cr, max_drawing
 
 
-# TODO - support ties as a list of optimums; make cleaner, if possible
 def MMCR(Gs):
-    """finds the graph(s) with minimum and maximum convex-MRCN over a set of
-    graphs Gs
+    """
+    finds the graph(s) with min and max convex-MRCN over a set of graphs
+    TODO support ties as a list of optimums; make cleaner, if possible
     """
     max_index = min_index = 0
     max_cr, max_drawing = MRCN_convex(Gs[0])
@@ -201,9 +197,30 @@ def randomized_stepped(G):
     """
     D = []
     while G.D:
-        D += [G.D.pop(randint(0, len(G.D) - 1))]
+        D.append(G.D.pop(randint(0, len(G.D) - 1)))
     G.reset()
     return CR(G=G, D=D), D
+
+
+def randomized_continuous(G):
+    """
+    returns CR˚(D) for a random permutation D ∈ D˚(G) constructed by placing
+    each vertex at a random angle about the unit circle
+
+    note:
+    this yields OPT/3 in expectation (and can be derandomized)
+    """
+    angles = []
+    for _ in G.V:
+        angle = random()
+        while angle in angles:
+            angle = random()
+        angles.append(angle)
+    D = [angles.index(a) for a in sorted(angles)]
+    return CR(G=G, D=D), D
+
+
+# TODO clean and add derandomized (anything else?)
 
 
 @test
@@ -228,7 +245,7 @@ def greedy(G, custom=None, order=False, direction=False, mix=False, IO=None):
     max_CR = 0
     for v in ordered(G, direction) if order else (custom if custom else G.D):
         max_spot = 0    # affects placement, e.g., if no crossings found
-        E += N_induced(G, D, v)
+        E.extend(N_induced(G, D, v))
         for current_spot in range(len(D)):
             current_drawing = D[:current_spot + 1] + [v] + D[current_spot + 1:]
             current_CR = CR(D=current_drawing, EP=naeps(E=E))
@@ -245,10 +262,6 @@ def greedy(G, custom=None, order=False, direction=False, mix=False, IO=None):
     return max_CR, D
 
 
-# TODO (if useful)
-# investigate the approximation gain and time increase with cap
-# vertex-ordering heuristics (e.g., degree)
-# printing partial results
 @test
 def local_search(G, mix=False, cap=float('inf')):
     """

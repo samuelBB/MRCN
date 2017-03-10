@@ -1,11 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-An assortment of standard graph-theoretic tools to facilitate studying the MRCN
-problem
-
-======
-
-See MRCN_Algorithms.py for more information on the MRCN problem.
+Assortment of graph-theoretic tools to facilitate studying the MRCN problem
 
 This file contains:
 
@@ -28,8 +23,8 @@ This file contains:
 
 3) a plotting function that draws a convex rectilinear plane embedding of a
    graph about the unit circle, showing edge crossings; features include even-
-   spacing and vertex numbering. the resultant drawing is saved to a .png
-   picture file
+   spacing and vertex numbering. the resultant drawing is either displayed or
+   saved as a picture file (.png)
 """
 from random import random, choice
 from graph import Graph
@@ -97,7 +92,7 @@ def K(n):
     E, vs = [], range(1, n)
     for n in range(n - 1):
         for k in vs:
-            E += [(n, k)]
+            E.append((n, k))
         vs = vs[1:]
     return Graph(E=E, V=range(n))
 
@@ -112,8 +107,8 @@ def uniform_generalized_star(b, e):
     """
     E, V, s = [], [0], 1
     for b in range(b):
-        E += [(0, s)] + [(s + k, s + k + 1) for k in range(e - 1)]
-        V += [i for i in range(s, s + e)]
+        E.extend([(0, s)] + [(s + k, s + k + 1) for k in range(e - 1)])
+        V.extend(range(s, s + e))
         s += 10    # or some other sufficiently large offset
     return Graph(E=E, V=V)
 
@@ -144,7 +139,7 @@ def from_file(file):
     for v, neighborhood in enumerate(adjacency_list):
         neighbors = map(int, neighborhood.split(" "))
         for n in neighbors:
-            E += [(v, n)]
+            E.append((v, n))
         size = max(size, max(neighbors))
 
     return Graph(V=range(size + 1), E=E)
@@ -163,7 +158,7 @@ def from_file_reg_format(file):
     import re
 
     lines = open(file).read().splitlines()
-    graph_list, E = [], []
+    graphs, E = [], []
     i = j = M = 0
     b = False
 
@@ -172,7 +167,7 @@ def from_file_reg_format(file):
             i += 1
             b = True
             if i > 1:
-                graph_list += [Graph(E=E, V=range(M))]
+                graphs.append(Graph(E=E, V=range(M)))
                 j = M = 0
                 E[:] = []
         elif line == "":
@@ -184,11 +179,11 @@ def from_file_reg_format(file):
                 if c == ' ':
                     continue
                 elif int(c) - 1 > j:
-                    E += [(j, int(c) - 1)]
+                    E.append((j, int(c) - 1))
                 M = max(M, int(c))
             j += 1
-    graph_list += [Graph(E=E, V=range(M))]    # get last graph
-    return graph_list
+    graphs.append(Graph(E=E, V=range(M)))  # get last graph
+    return graphs
 
 
 #############################################
@@ -224,33 +219,35 @@ def ordered(G, b=False):
     b: specifies ascending or descending, where default is ascending (False)
     """
     return [s[0] for s in sorted(map(lambda v: (v, deg(v, G)), G.V),
-                                 key=lambda p: p[1],
-                                 reverse=b)]
+                                 key=lambda p: p[1], reverse=b)]
 
 
 def induced(G, U):
     """
-    return the subgraph induced by U ⊆ V(G), i.e., {(u,v) | u,v ∈ U}
+    returns the subgraph induced by U ⊆ V(G), i.e., {(u,v) | u,v ∈ U}
     """
     return [e for e in G.E if set(e) <= set(U)]
 
 
 def N_induced(G, U, v):
     """
-    return the edges induced by the neighborhood of v in U ⊆ V(G), i.e.,
+    returns the edges induced by the neighborhood of v in U ⊆ V(G), i.e.,
     {(u,v) | u ∈ U}
     """
-    return [e for e in G.E if (e[0] in U and e[1] == v) or (e[0] == v
-                                                            and e[1] in U)]
+    return [e for e in G.E if (e[0] in U and e[1] == v) or
+                              (e[0] == v and e[1] in U)]
 
 
 def dfs(G):
-    """return a DFS-induced ordering of V as well as the induced predecessor
+    """
+    returns a DFS-induced ordering of V as well as the induced predecessor
     list as a dictionary
 
     note:
     the ordering of the gray list corresponds to discovery time, and that of
     the black list to finishing time (see CLRS 3rd Ed. pgs. 603-612)
+
+    TODO dfs without recursion and bfs
     """
     black, gray, prev = [], [], {}
 
@@ -273,10 +270,10 @@ def dfs(G):
 # plotting #
 ############
 
-# TODO - random plotting and tree plotting
 
 def circle_plot(G, d=None, save_path=''):
-    """plot Gr about the unit circle, with the vertices being placed according
+    """
+    plots `G` about the unit circle, with the vertices being placed according
     to the order of permutation P; fill in edges
 
     name: MRCN algorithm used
@@ -299,7 +296,7 @@ def circle_plot(G, d=None, save_path=''):
     alpha = (2 * pi) / len(G.V)
     for j, v in enumerate(reversed(d or G.V)):
         # plot vertices clockwise, as equidistant points on circle
-        pos[v] = (-radius * sin((j + 1) * alpha), radius * cos((j + 1) * alpha))
+        pos[v] = -radius * sin((j + 1) * alpha), radius * cos((j + 1) * alpha)
 
     nx.draw(G_nx, pos, node_size=800)
     nx.draw_networkx_labels(G_nx, pos, font_size=16)

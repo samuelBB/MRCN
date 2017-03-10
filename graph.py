@@ -1,30 +1,28 @@
 """
-this file contains the Graph class, which represents undirected graphs. in
+This file contains the Graph class, which represents undirected graphs. in
 addition to list structures to store vertices and edges, we augment the Graph
-class with functionality to facilitate usage with MRCN algorithms (see
-MRCN_Algorithms.py)
+class with functionality to facilitate usage with MRCN algorithms
 """
 from random import shuffle, sample
 
 
 class Graph:
     """
-    representation of an undirected graph
+    Representation of an undirected graph
 
     For a graph G = (V, E), letting n=|V|, V is represented as the list [n-1]
-    and E as a list of pairs corresponing to the edges of E.
+    and E as a list of pairs corresponding to the edges of E.
 
     Graphs are stored in a "normalized" format, meaning V is kept sorted, and
     E is sorted on both the first and second element of the edges (note that
-    this does NOT mean the edges are directed, it's just convenient to have
-    things sorted for processing)
+    this does NOT imply directed edges, it's a convenience for processing)
 
     We also keep a list D which represents a convex drawing of G in the plane;
     such a drawing is completely determined by the relative order of the
     vertices, and hence, it suffices to keep an ordered list D of the vertices.
     D is mainly used in MRCN applications. Also note that D may change often
     since we process different convex drawings as a core part of our MRCN
-    algorithms, as opposed to the more static V and E
+    algorithms, as opposed to the "more static" V and E
     """
 
     def __init__(self, V=None, E=None, normalize=True):
@@ -65,7 +63,7 @@ class Graph:
         """
         norm = tuple(sorted(e))
         if norm not in self:
-            self.E += [norm]
+            self.E.append(norm)
             self.add_vertices(norm)
         if normalize:
             self._normalize()
@@ -95,8 +93,8 @@ class Graph:
 
     def permute(self, in_place=False):
         """
-        return random permutation of G.V, unless `in_place=True` in which case permute
-        `self.D` in place
+        returns random permutation of G.V, unless `in_place=True` in which
+        case permute `self.D` in place
         """
         if in_place:
             shuffle(self.D)
@@ -110,7 +108,8 @@ class Graph:
         self.D = self.V[:]
 
     def next(self):
-        """generates next lexicographic permutation of self.D
+        """
+        generates next lexicographic permutation of self.D
 
         pseudo-code:
         1. find largest k with self.D[k] < self.D[k + 1]
@@ -136,7 +135,7 @@ class Graph:
         """
         membership for vertices and edges
         """
-        if type(obj) == int:    # vertex
+        if type(obj) == int:  # vertex
             return True if obj in self.V else False
         else:    # edge
             return True if obj in self.E or obj[::-1] in self.E else False
