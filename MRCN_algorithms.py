@@ -36,7 +36,10 @@ sets of xy-coordinates as demanded by the general setting.
 """
 from __future__ import print_function
 from os.path import join
+from collections import defaultdict
 from random import random, shuffle, randint
+
+
 from graph_tools import adj, ordered, circle_plot, N_induced
 
 
@@ -65,7 +68,7 @@ def crosses(D, ep):
     """
 
     # map the vertices of the edge-pair to their location in the drawing D
-    a, b, c, d = [D.index(v) for v in ep[0][0], ep[0][1], ep[1][0], ep[1][1]]
+    a, b, c, d = [D.index(v) for v in (ep[0][0], ep[0][1], ep[1][0], ep[1][1])]
 
     # check vertex locations for crossing
     return (a < c < b < d) or (b < c < a < d) or (a < d < b < c) or \
@@ -102,17 +105,29 @@ def MRCN_convex(G):
         1. the while-loop executes (n-2)*(n-2)! times
         2. the if-statement executes (n-1)!/2 times
     """
-    max_cr, max_drawing = 0, []
-    more_drawings_to_check = True
-    EP = naeps(G)
-    while more_drawings_to_check and not G.D[1] == G.V[len(G) - 1]:
-        if G.D[1] < G.D[len(G) - 1]:
-            current_max = CR(G=G, EP=EP)
-            if max_cr < current_max:
-                max_cr, max_drawing = current_max, G.D[:]
-        more_drawings_to_check = G.next()
-    G.reset()
+    EP, max_cr, max_drawing = naeps(G), 0, []
+    with G.clean:
+        while not G.D[1] == G.V[len(G) - 1]:
+            if G.D[1] < G.D[len(G) - 1]:
+                current_max = CR(G=G, EP=EP)
+                if max_cr < current_max:
+                    max_cr, max_drawing = current_max, G.D[:]
+            G.next()
     return max_cr, max_drawing
+
+
+def crossing_spectrum(G):
+    """
+    return dict of `count -> drawing` for all counts
+    """
+    spectrum = defaultdict(list)
+    EP = naeps(G)
+    with G.clean:
+        while not G.D[1] == G.V[len(G) - 1]:
+            if G.D[1] < G.D[len(G) - 1]:
+                spectrum[CR(G=G, EP=EP)].append(G.D[:])
+            G.next()
+    return spectrum
 
 
 def MMCR(Gs):

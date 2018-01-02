@@ -271,7 +271,7 @@ def dfs(G):
 ############
 
 
-def circle_plot(G, d=None, save_path=''):
+def circle_plot(G, d=None, save_path='', circle=None):
     """
     plots `G` about the unit circle, with the vertices being placed according
     to the order of permutation P; fill in edges
@@ -301,8 +301,9 @@ def circle_plot(G, d=None, save_path=''):
     nx.draw(G_nx, pos, node_size=800)
     nx.draw_networkx_labels(G_nx, pos, font_size=16)
 
-    circle = plt.Circle((0, 0), radius, color='b', fill=False)
-    plt.gcf().gca().add_artist(circle)
+    if circle:
+        circle = plt.Circle((0, 0), radius, color=circle, fill=False)
+        plt.gcf().gca().add_artist(circle)
 
     plt.axis('off')
     plt.axis('equal')

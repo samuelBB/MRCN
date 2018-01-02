@@ -6,7 +6,18 @@ class with functionality to facilitate usage with MRCN algorithms
 from random import shuffle, sample
 
 
-class Graph:
+class Clean(object):
+    def __init__(self, G):
+        self.G = G
+
+    def __enter__(self):
+        self.G.reset()
+
+    def __exit__(self, *args):
+        self.G.reset()
+
+
+class Graph(object):
     """
     Representation of an undirected graph
 
@@ -32,6 +43,7 @@ class Graph:
         self.V, self.E = sorted(V), (E if E else [])
         self._normalize(self.E) if normalize else E
         self.D = self.V[:]
+        self.clean = Clean(self)
 
     def _normalize(self, E=None):
         """
@@ -144,4 +156,4 @@ class Graph:
         """
         displays V, E
         """
-        return 'V - ' + str(self.V) + '\nE - ' + str(self.E)
+        return 'V = ' + str(self.V) + '\nE = ' + str(self.E)
