@@ -271,7 +271,8 @@ def dfs(G):
 ############
 
 
-def circle_plot(G, d=None, save_path='', circle=None):
+def circle_plot(G, d=None, circle=None, title=None,
+                show=True, save=None, pdf=None):
     """
     plots `G` about the unit circle, with the vertices being placed according
     to the order of permutation P; fill in edges
@@ -286,6 +287,9 @@ def circle_plot(G, d=None, save_path='', circle=None):
     from math import cos, sin, pi
     import matplotlib.pyplot as plt
     import networkx as nx
+
+    if title:
+        plt.title(title)
 
     G_nx = nx.Graph()
     G_nx.add_nodes_from(G.V)
@@ -307,8 +311,12 @@ def circle_plot(G, d=None, save_path='', circle=None):
 
     plt.axis('off')
     plt.axis('equal')
-    if save_path:
-        plt.savefig(save_path)
-    else:
+
+    if pdf:
+        pdf.savefig(plt.gcf())
+    if save:
+        plt.savefig(save)
+    if show:
         plt.show()
-    plt.close('all')
+
+    plt.clf()
